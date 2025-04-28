@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Neurodiversity Inclusion Quiz</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0/dist/chartjs-plugin-datalabels.min.js"></script>
+  <style>
+    body {
+      max-width: 900px;
+      margin: 1rem auto;
+      font-family: sans-serif;
+      font-size: 18px;
+      line-height: 1.4;
+    }
+    h1 {
+      font-size: 2rem;
+      margin-bottom: 1rem;
+    }
+    form {
+      margin-top: 1rem;
+    }
+    .question {
+      display: none;
+      margin-bottom: 1.5rem;
+    }
+    .question.active {
+      display: block;
+    }
+    fieldset {
+      border: 1px solid #ccc;
+      padding: 1rem;
+    }
+    legend {
+      font-weight: bold;
+      font-size: 1.4rem;
+    }
+    label {
+      font-size: 1.2rem;
+      display: block;
+      margin: 0.25rem 0;
+    }
+    button {
+      padding: 0.6rem 1.2rem;
+      font-size: 1.1rem;
+      margin-top: 0.5rem;
+    }
+    #resultSection {
+      display: none;
+      margin-top: 2rem;
+    }
+    #resultDistributionWrapper {
+      display: none;
+      margin-top: 2rem;
+      gap: 2rem;
+      align-items: flex-start;
+    }
+    #distributionSection {
+      width: 50%;
+    }
+    #messages {
+      width: 45%;
+    }
+    canvas {
+      max-width: 100%;
+    }
+    #level {
+      font-size: 1.2rem;
+      margin-top: 0.5rem;
+    }
+    #distributionText {
+      font-size: 1rem;
+      margin-top: 0.5rem;
+    }
+    #messages p {
+      display: none;
+      background: #f9f9f9;
+      padding: 1rem;
+      border-radius: 8px;
+      margin-bottom: 1rem;
+      font-size: 1rem;
+    }
+    #messages p b {
+      display: block;
+      margin-bottom: 0.5rem;
+      font-size: 1.1rem;
+    }
+  </style>
+</head>
+<body>
+  <h1>🚨 How inclusive are you? Let’s find out! 🚨</h1>
+  <form id="quizForm">
+    <!-- Questions inserted by script -->
+  </form>
+
+  <div id="resultSection">
+    <h2>📊 Your Results</h2>
+    <canvas id="barChart" height="200"></canvas>
+    <div id="level"></div>
+  </div>
+
+  <div id="resultDistributionWrapper">
+    <div id="distributionSection">
+      <h2>🥧 Overall Inclusion Breakdown</h2>
+      <canvas id="distributionChart" height="200"></canvas>
+      <div id="distributionText"></div>
+    </div>
+    <div id="messages">
+      <p id="msg-high"><b>🟢 High Inclusion (10–20)</b>
+      Congratulations! You demonstrate strong inclusive practices and deep understanding of neurodiversity. Keep leading by example and helping others adopt inclusive behaviors.</p>
+      <p id="msg-med"><b>🟡 Moderate Inclusion (21–35)</b>
+      You’re on the right path but still have room to grow. Reflect on moments where you can be more proactive in creating a supportive environment, and implement small changes that make a big difference.</p>
+      <p id="msg-low"><b>🔴 Low Inclusion (36–50)</b>
+      Your current practices have significant gaps. Invest time in learning about neurodiversity and take concrete steps—like adapting communication and asking how you can help—to build a more inclusive workspace.</p>
+    </div>
+  </div>
+
+  <script>
+    const storageKey = 'quizDataSeq';
+    const questions = [
+      "Do you double-check understanding when you sense confusion?",
+      "Do you discreetly invite someone to lunch instead of asking why they don't socialize?",
+      "Do you give clear deadlines and formats instead of saying ‘use your best judgment’?",
+      "Do you adjust lighting or reduce noise when you notice discomfort in meetings?",
+      "Do you publicly acknowledge work done differently when it deserves recognition?",
+      "Do you adapt your communication so neurodivergent colleagues can follow instructions clearly?",
+      "Do you respect personal space for colleagues sensitive to touch or proximity?",
+      "Do you avoid making assumptions about someone's abilities based on their behavior or diagnosis?",
+      "Do you offer extra support when you see a colleague struggling with sensory overload or focus?",
+      "Do you attend training or seek out information to better support neurodiverse teammates?"
+    ];
+    const form = document.getElementById('quizForm');
+    questions.forEach((q,i) => {
+      const idx = i+1;
+      const btnLabel = idx === questions.length ? 'Finish' : 'Next';
+      const fs = document.createElement('fieldset');
+      fs.className = 'question';
+      fs.id = 'q' + idx;
+      fs.innerHTML = `
+        <legend>${idx}. ${q}</legend>
+        <label><input type="radio" name="q${idx}" value="1" required> Almost never</label>
+        <label><input type="radio" name="q${idx}" value="2"> Rarely</label>
+        <label><input type="radio" name="q${idx}" value="3"> Sometimes</label>
+        <label><input type="radio" name="q${idx}" value="4"> Often</label>
+        <label><input type="radio" name="q${idx}" value="5"> Almost always</label>
+        <button type="button" class="nextBtn">${btnLabel}</button>`;
+      form.appendChild(fs);
+    });
+    let current = 1, answers = [];
+    document.getElementById('q1').classList.add('active');
+    document.querySelectorAll('.nextBtn').forEach(btn => {
+      btn.addEventListener('click', ()=> {
+        const field = btn.parentElement;
+        const sel = field.querySelector('input[type=radio]:checked');
+        if (!sel) { alert('Please select an answer.'); return; }
+        answers.push(+sel.value);
+        field.classList.remove('active');
+        current++;
+        if (current <= questions.length) {
+          document.getElementById('q'+current).classList.add('active');
+        } else {
+          showResults();
+        }
+      });
+    });
+    function getColor(score){
+      if(score<=20) return 'rgba(75,192,192,0.7)';
+      if(score<=35) return 'rgba(255,205,86,0.7)';
+      return 'rgba(255,99,132,0.7)';
+    }
+    function showResults(){
+      const totalScore = answers.reduce((a,b)=>a+b,0);
+      let levelText,msgId;
+      if(totalScore<=20){levelText='High Inclusion (10–20)'; msgId='msg-high';}
+      else if(totalScore<=35){levelText='Moderate Inclusion (21–35)'; msgId='msg-med';}
+      else{levelText='Low Inclusion (36–50)'; msgId='msg-low';}
+      const stored = JSON.parse(localStorage.getItem(storageKey)||'[]');
+      stored.push({score: totalScore});
+      localStorage.setItem(storageKey, JSON.stringify(stored));
+      const allScores = stored.map(r=>r.score);
+      const labels = allScores.map((_,i)=>i===allScores.length-1?`Participant ${i+1} (You)`:`Participant ${i+1}`);
+      const colors = allScores.map(getColor);
+      // Bar chart
+      new Chart(document.getElementById('barChart'),{
+        type:'bar',
+        data:{labels, datasets:[{label:'Score', data:allScores, backgroundColor:colors}]},
+        options:{responsive:true, scales:{x:{title:{display:true,text:'Participants'}}, y:{beginAtZero:true,title:{display:true,text:'Total Score'}}}}
+      });
+      document.getElementById('level').textContent=`You scored ${totalScore} points — ${levelText}`;
+      document.getElementById('resultSection').style.display='block';
+      // Pie
+      const high = allScores.filter(s=>s<=20).length;
+      const med = allScores.filter(s=>s>20&&s<=35).length;
+      const low = allScores.filter(s=>s>35).length;
+      const total = allScores.length;
+      new Chart(document.getElementById('distributionChart'),{
+        type:'pie',
+        plugins:[ChartDataLabels],
+        data:{labels:['High','Moderate','Low'],datasets:[{data:[high,med,low], backgroundColor:['rgba(75,192,192,0.7)','rgba(255,205,86,0.7)','rgba(255,99,132,0.7)'] }]},
+        options:{responsive:true,plugins:{datalabels:{color:'#000',font:{weight:'bold',size:16}, formatter:v=>v? (v/total*100).toFixed(2)+'%':'', anchor:'center', align:'center'}, legend:{position:'top'}}}
+      });
+      document.getElementById('distributionText').textContent=`Total participants: ${total}`;
+      document.getElementById('resultDistributionWrapper').style.display='flex';
+      ['msg-high','msg-med','msg-low'].forEach(id=>{
+        document.getElementById(id).style.display=id===msgId?'block':'none';
+      });
+    }
+  </script>
+</body>
+</html>
